@@ -32,12 +32,28 @@ export const syncUser = asyncHandler(async (req, res) => {
 
   const clerkUser = await clerkClient.users.getUser(userId);
 
+  const email = clerkUser.emailAddresses?.[0]?.emailAddress;
+
+  if (!email) {
+    return res.status(400).json({ error: "Email address not found on Clerk user." });
+  }
+
+  // ✅ Generate unique username from email prefix
+  const baseUsername = email.split("@")[0];
+  let username = baseUsername;
+  let suffix = 1;
+
+  while (await User.exists({ username })) {
+    username = `${baseUsername}${suffix++}`;
+  }
+
+  // ✅ Now safely create the user
   const userData = {
     clerkId: userId,
-    email: clerkUser.emailAddresses[0].emailAddress,
+    email,
     firstName: clerkUser.firstName || "",
     lastName: clerkUser.lastName || "",
-    username: clerkUser.emailAddresses[0].emailAddress.split("@")[0],
+    username, // guaranteed unique now
     profilePicture: clerkUser.imageUrl || "",
   };
 
